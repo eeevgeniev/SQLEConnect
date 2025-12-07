@@ -1,4 +1,4 @@
-{
+﻿{
   "ConnectionString": "Server=localhost;Database=Test;User Id=postgres;Password=bracer;",
   "IsSqLiteConnection": false
 }

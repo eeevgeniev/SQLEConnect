@@ -7,6 +7,8 @@ using SQLEConnectTests.Settings;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using Dapper;
 
 namespace SQLEConnectTests.Benchmarks.Tests
 {
@@ -27,6 +29,32 @@ namespace SQLEConnectTests.Benchmarks.Tests
 
             this._parser = new Parser();
             this._setting = this._parser.ParserConfiguration(path);
+        }
+        
+        [Benchmark]
+        public List<Model> SmallQuerySQLEConnectEntity()
+        {
+            List<Model> models = null;
+
+            using (Connection<NpgsqlConnection> connection = new Connection<NpgsqlConnection>(this._setting.ConnectionString))
+            {
+                models = connection.Query<Model>(new EntityDescriptor<Model>(), SMALLLISTQUERY, null, false, false);
+            }
+
+            return models;
+        }
+        
+        [Benchmark]
+        public List<Model> LargeQuerySQLEConnectEntity()
+        {
+            List<Model> models = null;
+
+            using (Connection<NpgsqlConnection> connection = new Connection<NpgsqlConnection>(this._setting.ConnectionString))
+            {
+                models = connection.Query<Model>(new EntityDescriptor<Model>(), LARGELISTQUERY, null, false, false);
+            }
+
+            return models;
         }
 
         [Benchmark]
@@ -55,7 +83,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return models;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<Dictionary<string, object>> SmallQuerySQLEConnectDict()
         {
             List<Dictionary<string, object>> models = null;
@@ -68,7 +96,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return models;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<Dictionary<string, object>> LargeQuerySQLEConnectDict()
         {
             List<Dictionary<string, object>> models = null;
@@ -81,7 +109,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return models;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<dynamic> SmallQuerySQLEConnectDynamic()
         {
             List<dynamic> models = null;
@@ -94,7 +122,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return models;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<dynamic> LargeQuerySQLEConnectDynamic()
         {
             List<dynamic> models = null;
@@ -107,7 +135,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return models;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<string> LargeStringQuerySQLEConnect()
         {
             List<string> strings = null;
@@ -120,7 +148,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return strings;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<int> LargeIntQuerySQLEConnect()
         {
             List<int> integers = null;
@@ -133,7 +161,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return integers;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<DateTime> LargeDateTimesQuerySQLEConnect()
         {
             List<DateTime> dateTimes = null;
@@ -146,7 +174,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return dateTimes;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<decimal> LargeDecimalsQuerySQLEConnect()
         {
             List<decimal> decimals = null;
@@ -159,7 +187,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return decimals;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public List<long> LargeLongsQuerySQLEConnect()
         {
             List<long> longs = null;
@@ -172,7 +200,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return longs;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public Model SmallQuerySQLEConnectSingleModel()
         {
             using Connection<NpgsqlConnection> connection = new Connection<NpgsqlConnection>(this._setting.ConnectionString);
@@ -182,7 +210,7 @@ namespace SQLEConnectTests.Benchmarks.Tests
             return model;
         }
 
-        [Benchmark]
+        //[Benchmark]
         public Dictionary<string, object> SmallQuerySQLEConnectSingleDict()
         {
             using Connection<NpgsqlConnection> connection = new Connection<NpgsqlConnection>(this._setting.ConnectionString);
@@ -190,6 +218,28 @@ namespace SQLEConnectTests.Benchmarks.Tests
             var (hasResults, dict) = connection.Single<Dictionary<string, object>>(SINGLEQUERY, null);
 
             return dict;
+        }
+        
+        [Benchmark]
+        public List<Model> QueryDapperSmall()
+        {
+            using (NpgsqlConnection connection = new NpgsqlConnection(this._setting.ConnectionString))
+            {
+                IEnumerable<Model> results = connection.Query<Model>(SMALLLISTQUERY, null);
+                
+                return results.ToList();
+            }
+        }
+        
+        [Benchmark]
+        public List<Model> QueryDapperLarge()
+        {
+            using (NpgsqlConnection connection = new NpgsqlConnection(this._setting.ConnectionString))
+            {
+                IEnumerable<Model> results = connection.Query<Model>(LARGELISTQUERY, null);
+                
+                return results.ToList();
+            }
         }
     }
 }

@@ -187,16 +187,17 @@ namespace SQLEConnect
 
         private Expression<Func<TMember, TMember, bool>> GetExpression<TMember>()
         {
+	        if (this._memberExpressions.Count == 0)
+	        {
+		        return null;
+	        }
+	        
 	        ParameterExpression parameterXExpression = Expression.Parameter(typeof(TMember)); 
 	        ParameterExpression parameterYExpression = Expression.Parameter(typeof(TMember));
 
 	        BlockExpression blockExpression = null;
 	        
-	        if (this._memberExpressions.Count == 0)
-	        {
-		        blockExpression = Expression.Block(Expression.Constant(false));
-	        }
-	        else if (this._memberExpressions.Count == 1)
+	        if (this._memberExpressions.Count == 1)
 	        {
 		        blockExpression = Expression.Block(
 			        Expression.Equal(

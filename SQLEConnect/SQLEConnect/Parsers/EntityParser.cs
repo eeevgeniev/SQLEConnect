@@ -91,7 +91,7 @@ namespace SQLEConnect.Parsers
 
 			internal override void SetValue(TChild value)
 			{
-				if (value != null && !this.IsValueAdded(value))
+				if (!this.IsValueAdded(value))
 				{
 					this._collection.Add(value);
 				}

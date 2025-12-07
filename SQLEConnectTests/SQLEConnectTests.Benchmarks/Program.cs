@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Running;
-using Dapper;
+﻿using Dapper;
 using Newtonsoft.Json;
 using Npgsql;
 using SQLEConnect;
 using SQLEConnectTests.Benchmarks.Models;
 using SQLEConnectTests.Benchmarks.Parsers;
-using SQLEConnectTests.Benchmarks.Tests;
 using SQLEConnectTests.SettingParser;
 using SQLEConnectTests.Settings;
 using System;
@@ -19,6 +17,8 @@ namespace SQLEConnectTests.Benchmarks
     internal class Program
     {
         private const string SETTING_NAME = "settings.json";
+        private const string BOOKS_PATH = "test-data-books.json";
+        
         private readonly static List<string> files = new List<string>()
         {
             "test-data-1.json",
@@ -40,7 +40,7 @@ namespace SQLEConnectTests.Benchmarks
             "test-data-17.json",
             "test-data-18.json",
             "test-data-19.json",
-            "test-data-20.json",
+            "test-data-20.json"
         };
 
         static void Main(string[] args)
@@ -55,26 +55,22 @@ namespace SQLEConnectTests.Benchmarks
             {
                 InsertData(setting.ConnectionString);
             }
-
+            
 #if DEBUG
+            List<Model> second = QuerySQLEConnectQuery(setting.ConnectionString);
             List<Model> first = QuerySQLEConnect(setting.ConnectionString);
-            IEnumerable<Model> second = QueryDapper(setting.ConnectionString);
-            List<StructModel> third = QuerySQLEConnectForStruct(setting.ConnectionString);
-            List<Dictionary<string, object>> fourth = QuerySQLEConnectWithDictionary(setting.ConnectionString);
-            List<Model> fifth = QuerySQLEConnectWithCustomParser(setting.ConnectionString);
-            (List<Model> models, List<int> integers, List<string> strings, List<DateTime> dates, List<decimal> decimals, List<long> longs) sixth = QueryMultipleValues(setting.ConnectionString);
-            List<dynamic> seventh = QuerySQLEConnectWithDynamic(setting.ConnectionString);
+            IEnumerable<Model> third = QueryDapper(setting.ConnectionString);
+            List<StructModel> fourth = QuerySQLEConnectForStruct(setting.ConnectionString);
+            List<Dictionary<string, object>> fifth = QuerySQLEConnectWithDictionary(setting.ConnectionString);
+            List<Model> sixth = QuerySQLEConnectWithCustomParser(setting.ConnectionString);
+            (List<Model> models, List<int> integers, List<string> strings, List<DateTime> dates, List<decimal> decimals, List<long> longs) seventh = QueryMultipleValues(setting.ConnectionString);
+            List<dynamic> eight = QuerySQLEConnectWithDynamic(setting.ConnectionString);
 
             Debug.Assert(first.Count == second.ToList().Count);
 
             Debug.Assert(first.SequenceEqual(second));
-
-            Debug.Assert(first.Count == third.Count);
-
-            for (int i = 0; i < first.Count; i++)
-            {
-                Debug.Assert(first[i].Equals(third[i]));
-            }
+            
+            Debug.Assert(first.SequenceEqual(third));
 
             Debug.Assert(first.Count == fourth.Count);
 
@@ -83,24 +79,31 @@ namespace SQLEConnectTests.Benchmarks
                 Debug.Assert(first[i].Equals(fourth[i]));
             }
 
-            Debug.Assert(first.SequenceEqual(fifth));
+            Debug.Assert(first.Count == fifth.Count);
 
-            Debug.Assert(first.SequenceEqual(sixth.models));
-
-            for (int i = 0; i < sixth.models.Count; i++)
+            for (int i = 0; i < first.Count; i++)
             {
-                Debug.Assert(sixth.models[i].Id == sixth.integers[i]);
-                Debug.Assert(sixth.models[i].Strp == sixth.strings[i]);
-                Debug.Assert(sixth.models[i].Date == sixth.dates[i]);
-                Debug.Assert(sixth.models[i].Dcml == sixth.decimals[i]);
-                Debug.Assert(sixth.models[i].Lng == sixth.longs[i]);
+                Debug.Assert(first[i].Equals(fourth[i]));
             }
 
-            Debug.Assert(first.Count == seventh.Count);
+            Debug.Assert(first.SequenceEqual(sixth));
+
+            Debug.Assert(first.SequenceEqual(seventh.models));
+            
+            for (int i = 0; i < seventh.models.Count; i++)
+            {
+                Debug.Assert(seventh.models[i].Id == seventh.integers[i]);
+                Debug.Assert(seventh.models[i].Strp == seventh.strings[i]);
+                Debug.Assert(seventh.models[i].Date == seventh.dates[i]);
+                Debug.Assert(seventh.models[i].Dcml == seventh.decimals[i]);
+                Debug.Assert(seventh.models[i].Lng == seventh.longs[i]);
+            }
+
+            Debug.Assert(first.Count == eight.Count);
 
             for(int i = 0; i < first.Count; i++)
             {
-                first[i].Equals(seventh[i]);
+                first[i].Equals(eight[i]);
             }
 #endif
 
@@ -122,6 +125,31 @@ namespace SQLEConnectTests.Benchmarks
                 models = connection.Query<Model>("SELECT * FROM models ORDER BY id LIMIT 98989 OFFSET 1011;", null);
 
                 stopwatch.Stop();
+
+                Console.WriteLine("EConnect");
+                Console.WriteLine(stopwatch.ElapsedMilliseconds);
+            }
+
+            Console.WriteLine(models?.Count);
+
+            return models;
+        }
+        
+        private static List<Model> QuerySQLEConnectQuery(string connectionString)
+        {
+            List<Model> models = null;
+
+            using (Connection<NpgsqlConnection> connection = new Connection<NpgsqlConnection>(connectionString))
+            {
+                Stopwatch stopwatch = new Stopwatch();
+
+                stopwatch.Start();
+
+                models = connection.Query<Model>(new EntityDescriptor<Model>(), "SELECT * FROM models ORDER BY id LIMIT 98989 OFFSET 1011;", null, false, false);
+
+                stopwatch.Stop();
+                
+                Console.WriteLine("Entity");
 
                 Console.WriteLine(stopwatch.ElapsedMilliseconds);
             }
@@ -145,9 +173,10 @@ namespace SQLEConnectTests.Benchmarks
 
                 stopwatch.Stop();
 
+                Console.WriteLine("Struct");
                 Console.WriteLine(stopwatch.ElapsedMilliseconds);
             }
-
+            
             Console.WriteLine(models?.Count);
 
             return models;
@@ -167,6 +196,7 @@ namespace SQLEConnectTests.Benchmarks
 
                 stopwatch.Stop();
 
+                Console.WriteLine("Dictionary");
                 Console.WriteLine(stopwatch.ElapsedMilliseconds);
             }
 
@@ -179,7 +209,18 @@ namespace SQLEConnectTests.Benchmarks
         {
             using (NpgsqlConnection connection = new NpgsqlConnection(connectionString))
             {
-                return connection.Query<Model>("SELECT * FROM models ORDER BY id LIMIT 98989 OFFSET 1011;", null);
+                Stopwatch stopwatch = new Stopwatch();
+                
+                stopwatch.Start();
+                
+                IEnumerable<Model> results = connection.Query<Model>("SELECT * FROM models ORDER BY id LIMIT 98989 OFFSET 1011;", null);
+                
+                stopwatch.Stop();
+                
+                Console.WriteLine("Dapper");
+                Console.WriteLine(stopwatch.ElapsedMilliseconds);
+                
+                return results;
             }
         }
 
@@ -201,6 +242,7 @@ namespace SQLEConnectTests.Benchmarks
 
                 connection.ClearParsers();
 
+                Console.WriteLine("Custom Parser");
                 Console.WriteLine(stopwatch.ElapsedMilliseconds);
             }
 
@@ -223,6 +265,7 @@ namespace SQLEConnectTests.Benchmarks
 
                 stopwatch.Stop();
 
+                Console.WriteLine("Dynamic");
                 Console.WriteLine(stopwatch.ElapsedMilliseconds);
             }
 
@@ -260,20 +303,43 @@ namespace SQLEConnectTests.Benchmarks
         {
             using (Connection<NpgsqlConnection> connection = new Connection<NpgsqlConnection>(connectionString))
             {
-                connection.NonQuery(@"CREATE TABLE IF NOT EXISTS models
-                                    (
-                                        id INTEGER GENERATED ALWAYS AS IDENTITY,
-                                        strp TEXT,
-                                        chr TEXT,
-                                        character TEXT,
-                                        date TIMESTAMPTZ,
-                                        ndate TIMESTAMPTZ,
-                                        strs TEXT,
-                                        strw TEXT,
-                                        dcml NUMERIC(14, 4),
-                                        lng BIGINT,
-                                        PRIMARY KEY (id)
-                                    );", null);
+                connection.NonQuery("""
+                                                                        CREATE TABLE IF NOT EXISTS models
+                                                                        (
+                                                                            id INTEGER GENERATED ALWAYS AS IDENTITY,
+                                                                            strp TEXT,
+                                                                            chr TEXT,
+                                                                            character TEXT,
+                                                                            date TIMESTAMPTZ,
+                                                                            ndate TIMESTAMPTZ,
+                                                                            strs TEXT,
+                                                                            strw TEXT,
+                                                                            dcml NUMERIC(14, 4),
+                                                                            lng BIGINT,
+                                                                            PRIMARY KEY (id)
+                                                                        );
+                                    """, null);
+
+                connection.NonQuery("""
+                                                                        CREATE TABLE IF NOT EXISTS books
+                                                                         (
+                                                                             bookid INTEGER GENERATED ALWAYS AS IDENTITY,
+                                                                             name TEXT,
+                                                                             price NUMERIC(14, 4),
+                                                                             numberofcopies INTEGER,
+                                                                             PRIMARY KEY (bookid)
+                                                                         );
+                                                                        CREATE TABLE IF NOT EXISTS users
+                                                                        (
+                                                                            userid INTEGER GENERATED ALWAYS AS IDENTITY,
+                                                                            name TEXT,
+                                                                            address TEXT,
+                                                                            age INTEGER,
+                                                                            bookid INTEGER,
+                                                                            PRIMARY KEY (userid),
+                                                                            FOREIGN KEY (bookid) references books(bookid)
+                                                                        );
+                                    """, null);
             }
         }
 
